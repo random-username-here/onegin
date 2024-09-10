@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "onegin.h"
+#include <sys/stat.h>
 
 #define ESC_MODE "\x1b[94m"
 #define ESC_TITLE "\x1b[4m"
@@ -48,12 +49,14 @@ int main (int argc, const char** argv) {
     return 0;
   }
 
-  fseek(f, 0, SEEK_END);
-  size_t len = ftell(f);
+  struct stat info;
+  fstat(fileno(f), &info);
+  size_t len = info.st_size;
 
-  char* buf = calloc(len, sizeof(char));
+  char* buf = calloc(len+1, sizeof(char));
   fseek(f, 0, SEEK_SET);
-  fread(buf, 1, len, f);
+  len = fread(buf, 1, len, f);
+  buf[len] = 0;
   fclose(f);
 
   sort_mode_t sort_mode = !strcmp("sort", mode) ? SORT_FORWARDS : SORT_BACKWARDS;
