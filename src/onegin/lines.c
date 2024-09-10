@@ -192,8 +192,10 @@ size_t parse_poem(const char* buffer, const char*** lines_output) {
   if (!should_ignore_line(buffer))
     lines[cur_line++] = trimmed_line_begin(buffer);
 
-  for (const char* c = buffer; *c; ++c)
-    if (*c == '\n' && !should_ignore_line(c+1))
+  for (const char* c = strchrnul(buffer, '\n');
+       *c;
+       c = strchrnul(c, '\n'))
+    if (!should_ignore_line(c+1))
       lines[cur_line++] = trimmed_line_begin(c+1);
   
   return num_lines;
