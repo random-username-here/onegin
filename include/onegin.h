@@ -22,4 +22,7 @@ void print_line(const char* begin);
 ///
 size_t parse_poem(const char* buffer, const char*** lines_output);
 
+
+
+
 #endif
