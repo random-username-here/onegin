@@ -9,6 +9,7 @@
 #include "istd/util/err.h"
 #include "onegin.h"
 #include <sys/stat.h>
+#include <time.h>
 
 #define ESC_MODE "\x1b[94m"
 #define ESC_TITLE "\x1b[4m"
@@ -133,38 +134,36 @@ int main (int argc, const char** argv) {
     return -1; 
   }
 
-  FILE* f = fopen(filename, "r");
-  if (!f)
-    panic$("Failed to open given file\n"
-          "  errno says   : %s\n"
-          "  file name is : `%s`\n",
-          strerror(errno), filename);
-
-  struct stat info;
-  fstat(fileno(f), &info);
-  size_t len = info.st_size;
-
-  char* buf = calloc(len+1, sizeof(char));
-  if (!buf)
-    panic$("Failed to allocate buffer of length %zu for poem text\n", len+1);
-
-  len = fread(buf, 1, len, f);
-  buf[len] = 0;
-
-  if (fclose(f))
-    panic$("Failed to close input file for some reason");
+  char* buf = read_file(filename);
 
   sort_mode_t sort_mode = !strcmp("sort", mode) ? SORT_FORWARDS : SORT_BACKWARDS;
 
-  const char** lines = NULL;
+  string_view_t* lines = NULL;
   size_t num_lines = parse_poem(buf, &lines);
+  
   sort_lines(lines, num_lines, sort_mode);
 
   if (!strcmp("combine", mode)) {
-    printf("TODO\n"); 
+
+    srand(time(NULL));
+    const size_t generated_len = 16;
+    string_view_t* generated_lines = generate_something_weird(
+        lines, num_lines,
+        generated_len, GENERATED_RYTHM_CROSSOVER
+    );
+
+    for (size_t i = 0; i < generated_len; ++i) {
+      if (i % 4 == 0)
+        printf("\n");
+      print_sview(generated_lines[i]);
+      printf("\n"); 
+    }
+
+    free(generated_lines);
+
   } else {
     for (size_t i = 0; i < num_lines; ++i) {
-      print_line(lines[i]);
+      print_sview(lines[i]);
       printf("\n");
     }
   }

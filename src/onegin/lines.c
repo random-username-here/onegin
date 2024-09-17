@@ -14,26 +14,19 @@
 #define ESC_ANNOT "\x1b[90m"
 #define ESC_END   "\x1b[0m"
 
-/// Print given line from start to line break or `\0`
-void print_line(const char* begin) {
-  if (!begin) {
+void print_sview(string_view_t str) {
+  if (!str.begin) {
     printf("(NULL)");
     return;
   }
-  for(const char* c = begin; *c && *c != '\n'; ++c) {
-    if (*c == ANNOT_BEGIN)
+  for (size_t i = 0; i < str.len; ++i) {
+    const char c = str.begin[i];
+    if (c == ANNOT_BEGIN)
       fputs(ESC_ANNOT, stdout);
-    putc(*c, stdout);
-    if (*c == ANNOT_END)
+    putc(c, stdout);
+    if (c == ANNOT_END)
       fputs(ESC_END, stdout);
   }
-}
-
-size_t line_len(const char* begin) {
-  if (!begin) return 0;
-  size_t res = 0;
-  for (const char* c = begin; *c && *c != '\n'; ++c, ++res);
-  return res;
 }
 
 /// Should qsort compare that rune, or is it punctuation/whitespace/
@@ -132,17 +125,16 @@ const char* utf8_next_adapter(const char* pos, const char* _, rune* rn) {
 }
 
 int sort_predicate(const void* _a, const void* _b, void* mode) {
-  const char* a = *((const char**) _a);
-  const char* b = *((const char**) _b);
+  const string_view_t a_v = *((const string_view_t*) _a);
+  const string_view_t b_v = *((const string_view_t*) _b);
+  const char* a_pos = a_v.begin, *b_pos = b_v.begin;
 
-  assert(a);
-  assert(b);
-
-  const char* a_begin = a, *b_begin = b;
+  assert(a_pos);
+  assert(b_pos);
 
   if (mode == SORT_MODE_TAG_BACKWARDS) {
-    a += line_len(a);
-    b += line_len(b);
+    a_pos += a_v.len;
+    b_pos += b_v.len;
   }
 
   const char* (*next_fn)(const char*, const char*, rune*) =
@@ -150,22 +142,22 @@ int sort_predicate(const void* _a, const void* _b, void* mode) {
   rune a_rn = 1, b_rn = 1;
 
   while (a_rn == b_rn && !is_end(a_rn) && !is_end(b_rn)) {
-    a = find_next_letter(a, a_begin, &a_rn, next_fn);
-    b = find_next_letter(b, b_begin, &b_rn, next_fn);
+    a_pos = find_next_letter(a_pos, a_v.begin, &a_rn, next_fn);
+    b_pos = find_next_letter(b_pos, b_v.begin, &b_rn, next_fn);
 
-    if (!a || !b)
+    if (!a_pos || !b_pos)
       return 0;
   }
 
   return (int) a_rn - (int) b_rn;
 }
 
-void sort_lines(const char** lines, size_t n, sort_mode_t mode) {
+void sort_lines(string_view_t* lines, size_t n, sort_mode_t mode) {
   
   assert(lines);
 
-  qsort_r(
-      lines, n, sizeof(char*),
+  my_qsort(
+      lines, n, sizeof(string_view_t),
       sort_predicate,
       mode == SORT_BACKWARDS 
        ? SORT_MODE_TAG_BACKWARDS
@@ -173,7 +165,14 @@ void sort_lines(const char** lines, size_t n, sort_mode_t mode) {
   );
 }
 
-size_t parse_poem(const char* buffer, const char*** lines_output) {
+size_t line_len(const char* begin) {
+  if (!begin) return 0;
+  size_t res = 0;
+  for (const char* c = begin; *c && *c != '\n'; ++c, ++res);
+  return res;
+}
+
+size_t parse_poem(const char* buffer, string_view_t** lines_output) {
 
   assert(buffer);
   assert(lines_output);
@@ -185,18 +184,23 @@ size_t parse_poem(const char* buffer, const char*** lines_output) {
       num_lines++;
   }
 
-  const char** lines = calloc(num_lines, sizeof(char*));
+  string_view_t* lines = calloc(num_lines, sizeof(string_view_t));
   *lines_output = lines;
 
   size_t cur_line = 0;
-  if (!should_ignore_line(buffer))
-    lines[cur_line++] = trimmed_line_begin(buffer);
+  if (!should_ignore_line(buffer)) {
+    const char* begin = trimmed_line_begin(buffer);
+    lines[cur_line++] = (string_view_t) { .begin = begin, .len = line_len(begin) }; 
+  }
 
   for (const char* c = strchrnul(buffer, '\n');
        *c;
-       c = strchrnul(c+1, '\n'))
-    if (!should_ignore_line(c+1))
-      lines[cur_line++] = trimmed_line_begin(c+1);
+       c = strchrnul(c+1, '\n')) {
+    if (!should_ignore_line(c+1)) {
+      const char* begin = trimmed_line_begin(c+1);
+      lines[cur_line++] = (string_view_t) { .begin = begin, .len = line_len(begin) }; 
+    }
+  }
   
   return num_lines;
 }
