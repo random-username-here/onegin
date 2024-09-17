@@ -5,7 +5,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include "istd/arg.h"
+//#include "istd/arg.h"
+#include "istd/util/err.h"
 #include "onegin.h"
 #include <sys/stat.h>
 
@@ -24,7 +25,7 @@ void print_help () {
   printf(ESC_MODE " combine   " ESC_RESET ESC_ARG " FILE NUM " ESC_RESET " - Make some amalgamation of NUM lines of that file, which looks like a poem\n");
   printf("\n");
 }
-
+/*
 typedef struct {
 
   const char* filename;
@@ -39,11 +40,11 @@ void init_cfg(void** cfg) {
   *cfg = calloc(1, sizeof(program_cfg));
   if (!*cfg)
     panic("Failed to allocate memory for command-line options");
-}
+}*/
 
 int main (int argc, const char** argv) {
 
-  iarg_cmd sorter = {
+  /*iarg_cmd sorter = {
 
     .name = "sort",
     .brief = "Sort lines in alphabetical order",
@@ -112,7 +113,7 @@ int main (int argc, const char** argv) {
 
   iarg_parse(argc, argv, &root_mod);
 
-  return 0;
+  return 0;*/
 
   if (argc == 2 && !strcmp(argv[1], "--help")) {
     print_help();
@@ -134,7 +135,7 @@ int main (int argc, const char** argv) {
 
   FILE* f = fopen(filename, "r");
   if (!f)
-    panic("Failed to open given file\n"
+    panic$("Failed to open given file\n"
           "  errno says   : %s\n"
           "  file name is : `%s`\n",
           strerror(errno), filename);
@@ -145,13 +146,13 @@ int main (int argc, const char** argv) {
 
   char* buf = calloc(len+1, sizeof(char));
   if (!buf)
-    panic("Failed to allocate buffer of length %zu for poem text\n", len+1);
+    panic$("Failed to allocate buffer of length %zu for poem text\n", len+1);
 
   len = fread(buf, 1, len, f);
   buf[len] = 0;
 
-  if (!fclose(f))
-    panic("Failed to close input file for some reason");
+  if (fclose(f))
+    panic$("Failed to close input file for some reason");
 
   sort_mode_t sort_mode = !strcmp("sort", mode) ? SORT_FORWARDS : SORT_BACKWARDS;
 

@@ -1,0 +1,3 @@
+[submodule "subprojects/istd"]
+	path = subprojects/istd
+	url = git@github.com:random-username-here/istd.git
